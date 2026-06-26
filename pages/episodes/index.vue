@@ -1,148 +1,82 @@
 <script lang="ts" setup>
-const route = useRoute()
-const router = useRouter()
+import type { Episode } from '~/types/api'
 
-const perPage = 20
-const page = ref(route.query.page || 1)
-const filter = ref({
-  name: route.query.name || '',
-})
-
-const query = reactive({
+const {
   page,
-  ...filter.value,
-})
+  perPage,
+  draft,
+  data,
+  pending,
+  isError,
+  isEmpty,
+  total,
+  from,
+  to,
+  catalog,
+  goToPage,
+  applyFilters,
+  clearFilters,
+  refresh,
+} = usePaginatedResource<Episode>('/episode', ['name'])
 
-watchEffect(() => {
-  router.push({ query: { ...route.query, page: page.value, ...query } })
-})
-
-const { data, pending, error } = useQuery('/episode', {
-  query,
-  lazy: true,
-})
-
-const catalog = ref()
-
-const onPage = (e) => {
-  page.value = e.page
-  catalog.value.scrollIntoView()
+function fmtDate(s: string) {
+  const d = new Date(s)
+  return Number.isNaN(+d)
+    ? s
+    : new Intl.DateTimeFormat('en', { dateStyle: 'long' }).format(d)
 }
 
-const applyFilters = () => {
-  for (const key in filter.value) {
-    query[key] = filter.value[key]
-  }
-
-  query.page = 1
+function rows(ep: Episode) {
+  return [
+    { label: 'Air date', value: fmtDate(ep.air_date) },
+    { label: 'Cast', value: `${ep.characters?.length ?? 0} characters` },
+  ]
 }
 </script>
 
 <template>
-  <div class="space-y-4 text-white pb-4 min-h-screen">
-    <Banner />
+  <div>
+    <Banner
+      title="Episode Logs"
+      subtitle="Broadcast records by air date and episode code, straight from the archive."
+    />
 
     <div
-      class="grid xl:grid-cols-[300px_1fr_300px] items-start max-w-[1400px] mx-auto gap-12"
+      class="mx-auto grid max-w-registry gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[280px_1fr] lg:gap-10 lg:px-8"
     >
-      <form
-        class="p-4 space-y-4 xl:sticky top-0"
-        @submit.prevent="applyFilters"
-      >
-        <h1>Filter</h1>
+      <FilterPanel :busy="pending" @apply="applyFilters" @clear="clearFilters">
+        <UiInput id="name" v-model="draft.name" label="Name" placeholder="e.g. Pilot" />
+      </FilterPanel>
 
-        <div class="flex flex-col">
-          <label for="name">Name</label>
-          <InputText
-            id="name"
-            v-model="filter.name"
-          />
-        </div>
-
-        <Button
-          type="submit"
-          class="w-full"
-          :disabled="pending"
-        >
-          {{ pending ? "Loading..." : "Apply" }}
-        </Button>
-      </form>
-
-      <div class="w-full">
-        <div
-          v-if="error"
-          class="text-center space-y-2 flex items-center justify-center flex-col h-full"
-        >
-          <h1 class="text-xl">
-            Something went wrong
-          </h1>
-          <p>Error from server: {{ error }}</p>
-
-          <img
-            src="/error.jpg"
-            alt="Sorry about that :("
-            class="rounded-lg"
-          >
-        </div>
-
-        <div
-          v-else-if="pending"
-          class="p-4 grid grid-cols-2 gap-4"
-        >
-          <Skeleton
-            v-for="i in perPage"
-            :key="i"
-            height="24rem"
-          />
-        </div>
-
-        <div v-else-if="data.results?.length">
+      <section aria-label="Episode logs" class="min-w-0">
+        <UiStateLoading v-if="pending" :count="perPage" />
+        <UiStateError v-else-if="isError" @retry="refresh" />
+        <UiStateEmpty v-else-if="isEmpty" @clear="clearFilters" />
+        <template v-else>
           <div
             ref="catalog"
-            class="p-4 grid sm:grid-cols-2 gap-4"
+            class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
           >
-            <Card
-              v-for="card in data.results"
-              :key="card.id"
-            >
-              <template #title>
-                {{ card.name }}
-              </template>
-
-              <template #content>
-                <ul>
-                  <li>
-                    Type:
-                    {{
-                      new Intl.DateTimeFormat().format(new Date(card.air_date))
-                    }}
-                  </li>
-                  <li>Episode: {{ card.episode }}</li>
-                  <li>Characters: {{ card.characters?.length || 0 }}</li>
-                </ul>
-              </template>
-            </Card>
+            <UiRecordCard
+              v-for="(ep, i) in data?.results || []"
+              :key="ep.id"
+              :code="`EP-${String(ep.id).padStart(3, '0')}`"
+              :title="ep.name"
+              :tag="ep.episode"
+              :rows="rows(ep)"
+              :index="i"
+            />
           </div>
-
-          <Paginator
-            :first="page * perPage"
-            :rows="perPage"
-            :total-records="data.info.count"
-            class="sticky bottom-0"
-            @page="onPage"
-          >
-            <template #start="slotProps">
-              <div class="flex gap-2 flex-wrap">
-                <span>Page: {{ slotProps.state.page }}</span>
-                <span>Rows: {{ slotProps.state.rows }}</span>
-                <span>Total: {{ data.info.count }} </span>
-              </div>
-            </template>
-          </Paginator>
-        </div>
-      </div>
-
-      <Navigation />
+          <UiPaginator
+            :page="page"
+            :total="total"
+            :per-page="perPage"
+            :from="from"
+            :to="to"
+            @change="goToPage"
+          />
+        </template>
+      </section>
     </div>
   </div>
 </template>

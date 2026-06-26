@@ -1,5 +1,5 @@
 {
-  "name": "nuxt-app",
+  "name": "rick-and-morty-wiki",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,15 +12,15 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
+    "@fontsource-variable/jetbrains-mono": "^5.0.21",
+    "@fontsource-variable/space-grotesk": "^5.0.20",
     "@nuxt/eslint": "^0.3.13",
     "@nuxtjs/tailwindcss": "^6.12.0",
     "nuxt": "^3.11.2",
-    "primevue": "^3.52.0",
     "vue": "^3.4.27",
     "vue-router": "^4.3.2"
   },
   "devDependencies": {
-    "nuxt-primevue": "^3.0.0",
     "prettier": "^3.3.1"
   }
 }

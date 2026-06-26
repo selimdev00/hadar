@@ -1,6 +1,12 @@
 <template>
-  <div class="bg-surface-800 min-h-screen text-white">
-    <slot />
+  <div class="flex min-h-screen flex-col bg-bg text-ink">
+    <a href="#main" class="skip-link">Skip to content</a>
+
+    <AppHeader />
+
+    <main id="main" tabindex="-1" class="flex-1 focus:outline-none">
+      <slot />
+    </main>
 
     <Footer />
   </div>
